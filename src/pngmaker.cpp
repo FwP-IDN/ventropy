@@ -1,168 +1,159 @@
 #include <png.h>
 #include <sstream>
+#include "common.h"
 #include "pngmaker.h"
+#include "hsl2rgb.hpp"
 
-typedef struct
+int PngMaker::pix(uint16_t value, uint16_t max)
 {
-    uint8_t red;
-    uint8_t green;
-    uint8_t blue;
-}
-pixel_t;
-
-/* A picture. */
-    
-typedef struct
-{
-    pixel_t *pixels;
-    size_t width;
-    size_t height;
-}
-bitmap_t;
-
-static int pix (int value, int max)
-{
-    if (value < 0) {
-        return 0;
-    }
-    return (int) (256.0 *((double) (value)/(double) max));
+    return (int)(256.0 * ((double)(value) / (double)max));
 }
 
-static pixel_t * pixel_at (bitmap_t * bitmap, int x, int y)
+pixel_t *PngMaker::pixel_at(bitmap_t *bitmap, int x, int y)
 {
     return bitmap->pixels + bitmap->width * y + x;
 }
 
+static RGB rainbowIdx(uint16_t value){
+    uint16_t hue = (uint16_t)(MAX_HUE * ((double)(value) / (double)MAX_HUE));
+    HSL data = HSL(MAX_HUE - hue, 1.0f, 0.5f);
+    return HSLToRGB(data);
+}
+
 PngMaker::PngMaker() : Logger("PngMaker")
 {
+    box_width = 0x8;
+    box_height = 0x8;
+    box_per_row = 0x20;
     chart_height = 256;
     bar_height = 32;
 }
 
+void PngMaker::SetBlockSize(Block block){
+    box_width<<block;
+    box_height<<block;
+    box_per_row = 0x100/box_width;
+}
+
 void PngMaker::MakeImage(const std::vector<unsigned int> &features)
 {
-    uint16_t box_width = 0x8;
-    uint16_t box_height = 0x8;
-    uint16_t box_per_row = 0x20;
-    logger->info("Make image");
-    FILE * fp;
+    logger->debug("Make image");
+    FILE *fp;
     png_structp png_ptr = NULL;
     png_infop info_ptr = NULL;
     size_t x, y;
-    png_byte ** row_pointers = NULL;
+    png_byte **row_pointers = NULL;
     int pixel_size = 3;
     int depth = 8;
 
     bitmap_t fruit;
 
-    /* Create an image. */
+    fruit.width = box_per_row * box_width;
+    fruit.height = (features.size() / box_per_row + 1) * box_height;
 
-    fruit.width = 0x20*0x08;
-    fruit.height = (features.size()/0x20 + 1)*0x8;
+    fruit.pixels = (pixel_t *)calloc(fruit.width * fruit.height, sizeof(pixel_t));
 
-    fruit.pixels = (pixel_t *)calloc (fruit.width * fruit.height, sizeof (pixel_t));
-
-    for (y = 0; y < fruit.height; y+=box_height) {
-        for (x = 0; x < fruit.width; x+=box_width) {
-            unsigned int e = features[y*(box_per_row/box_width)+x/box_width]&0xff;
-            uint32_t size = e/0x40+1;
-            uint8_t start = box_width/2 - size;
-            uint8_t end = box_width/2 + size;
-            for (int u=start; u<end; u++){
-                for (int v=start; v<end; v++){
-                    pixel_t * pixel = pixel_at (& fruit, x+v, y+u);
-                    pixel->green = pix (e, 0xff);
-                    pixel->blue = pix (e, 0xff);
-                    pixel->red = pix (e, 0xff);
+    for (y = 0; y < fruit.height; y += box_height)
+    {
+        for (x = 0; x < fruit.width; x += box_width)
+        {
+            uint16_t e = features[y * (box_per_row / box_width) + x / box_width];
+            uint8_t start = 1;
+            uint8_t end = box_width-1;
+            RGB rgb = rainbowIdx(e);
+            for (int u = start; u < end; u++)
+            {
+                for (int v = start; v < end; v++)
+                {
+                    pixel_t *pixel = pixel_at(&fruit, x + v, y + u);
+                    pixel->red   = rgb.R;
+                    pixel->green = rgb.G;
+                    pixel->blue  = rgb.B;
                 }
             }
         }
     }
-    
-    logger->info("prepare image {0:s}", filename.c_str());
-    fp = fopen (filename.c_str(), "wb");
-    if (! fp) {
-        return;
+
+    logger->debug("prepare image {0:s}", filename.c_str());
+    fp = fopen(filename.c_str(), "wb");
+    if (!fp)
+    {
+        throw vent_ex("png file error", errno);
     }
 
-    png_ptr = png_create_write_struct (PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
-    if (png_ptr == NULL) {
-        return;
-    }
-    
-    info_ptr = png_create_info_struct (png_ptr);
-    if (info_ptr == NULL) {
-        return;
-    }
-    
-    /* Set up error handling. */
-
-    if (setjmp (png_jmpbuf (png_ptr))) {
-        return;
+    png_ptr = png_create_write_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
+    if (png_ptr == NULL)
+    {
+        throw vent_ex("png create error", errno);
     }
 
-    bitmap_t * bitmap = &fruit;
-    
-    /* Set image attributes. */
+    info_ptr = png_create_info_struct(png_ptr);
+    if (info_ptr == NULL)
+    {
+        throw vent_ex("png create info struct error", errno);
+    }
 
-    png_set_IHDR (png_ptr,
-                  info_ptr,
-                  bitmap->width,
-                  bitmap->height,
-                  depth,
-                  PNG_COLOR_TYPE_RGB,
-                  PNG_INTERLACE_NONE,
-                  PNG_COMPRESSION_TYPE_DEFAULT,
-                  PNG_FILTER_TYPE_DEFAULT);
-    
-    /* Initialize rows of PNG. */
+    if (setjmp(png_jmpbuf(png_ptr)))
+    {
+        throw vent_ex("png set jump error", errno);
+    }
 
-    row_pointers = (png_byte **)png_malloc (png_ptr, bitmap->height * sizeof (png_byte *));
-    for (y = 0; y < bitmap->height; y++) {
-        png_byte *row = (png_byte *)png_malloc (png_ptr, sizeof (uint8_t) * bitmap->width * pixel_size);
+    bitmap_t *bitmap = &fruit;
+
+    png_set_IHDR(png_ptr,
+                 info_ptr,
+                 bitmap->width,
+                 bitmap->height,
+                 depth,
+                 PNG_COLOR_TYPE_RGB,
+                 PNG_INTERLACE_NONE,
+                 PNG_COMPRESSION_TYPE_DEFAULT,
+                 PNG_FILTER_TYPE_DEFAULT);
+
+    row_pointers = (png_byte **)png_malloc(png_ptr, bitmap->height * sizeof(png_byte *));
+    for (y = 0; y < bitmap->height; y++)
+    {
+        png_byte *row = (png_byte *)png_malloc(png_ptr, sizeof(uint8_t) * bitmap->width * pixel_size);
         row_pointers[y] = row;
-        for (x = 0; x < bitmap->width; x++) {
-            pixel_t * pixel = pixel_at (bitmap, x, y);
+        for (x = 0; x < bitmap->width; x++)
+        {
+            pixel_t *pixel = pixel_at(bitmap, x, y);
             *row++ = pixel->red;
             *row++ = pixel->green;
             *row++ = pixel->blue;
         }
     }
-    
-    /* Write the image data to "fp". */
 
-    png_init_io (png_ptr, fp);
-    png_set_rows (png_ptr, info_ptr, row_pointers);
-    png_write_png (png_ptr, info_ptr, PNG_TRANSFORM_IDENTITY, NULL);
+    png_init_io(png_ptr, fp);
+    png_set_rows(png_ptr, info_ptr, row_pointers);
+    png_write_png(png_ptr, info_ptr, PNG_TRANSFORM_IDENTITY, NULL);
 
-    /* The routine has successfully written the file, so we set
-       "status" to a value which indicates success. */
-
-    for (y = 0; y < bitmap->height; y++) {
-        png_free (png_ptr, row_pointers[y]);
+    for (y = 0; y < bitmap->height; y++)
+    {
+        png_free(png_ptr, row_pointers[y]);
     }
 
-    png_free (png_ptr, row_pointers);
-    png_destroy_write_struct (&png_ptr, &info_ptr);
-    fclose (fp);
+    png_free(png_ptr, row_pointers);
+    png_destroy_write_struct(&png_ptr, &info_ptr);
+    fclose(fp);
     return;
 }
 
-void PngMaker::SetFilename(std::string _filename)
+void PngMaker::SetFilename(std::string pfilename)
 {
+    //Get save image name
+    size_t extension = pfilename.find_last_of(".");
+    size_t last = pfilename.find_last_of("/");
+    pfilename = pfilename.substr(last + 1, extension);
+     
     std::stringstream ss;
-    ss << _filename << ".png";
+    ss << pfilename << ".png";
     filename = ss.str();
 }
 
 void PngMaker::WritePNGErrorHandler(png_structp png_ptr, png_const_charp msg)
 {
-  // Unused
-  (void)png_ptr;
-
-  // Write the error to stderr
-  fprintf(stderr, "error: %s (PNG write)\n", msg);
-
-  // "Eject! EJECT!"
-  exit(1);
+    (void)png_ptr;
+    throw vent_ex("png write error", errno);
+    return;
 }

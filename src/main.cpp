@@ -7,13 +7,15 @@
 #include <algorithm>
 #include <iostream>
 #include "entropy.h"
+#include "CLI11.hpp"
 #ifdef _WIN32
 #include <windows.h>
 #else
 #include <elf.h>
 #endif
-
+#include "common.h"
 #include "imgfactory.h"
+#include "featurefactory.h"
 
 using namespace std;
 
@@ -22,30 +24,36 @@ using namespace std;
 
 int main(int argc, char **argv)
 {
-  Entropy myent;
+  CLI::App app{"Vent v.0.1, an entropy level measurement tool for ELF"};
 
-  puts("Ent v.0.1, an entropy level and FPU density measurement tool\n"
-       "for ELF                                                     \n"
-       "                                             by Lattce Chang\n");
-  
-  if (argc < 2)
-  {
-    printf("usage: ent <FileName> [<SampleLength>]\n"
-           "SampleLength is 256 bytes by default\n");
-    return 1;
-  }
+  std::string filename = "";
+  app.add_option("-f,--file", filename, "file for information visualization")
+    ->required()
+    ->check(CLI::ExistingFile);
+  std::string graphic = "png";
+  app.add_option("-o,--output", graphic, "output graphic format, default is png");
+  std::string info = "entropy";
+  app.add_option("-i,--info", graphic, "information extraction method, default is entropy");
+  Block block = Block::b8;
+  app.add_set("-b,--block", block, {Block::b8, Block::b16, Block::b32}, "Image block size")
+    ->type_name("enum/Block in {b8=8, b16=16, b32=32}");
+  SampleBlock sample = SampleBlock::b256;
+  app.add_option("-s, --sample", sample, "Sample block size")
+    ->type_name("enum/SampleBlock in {b64=64, b128=128, b256=256}");
 
-  if (argc == 3)
-    myent.SetChunkSize(atoi(argv[2]));
+  CLI11_PARSE(app, argc, argv);
 
-  auto img = ImageFactory::GetFactory("png");
+  std::shared_ptr<Feature> feature = FeatureFactory::GetFactory(info.c_str());
 
-  std::string filename(argv[1]);
-  size_t extension = filename.find_last_of(".");
-  size_t last = filename.find_last_of("/");
-  std::string imgname = filename.substr(last+1, extension); 
-  std::vector<unsigned int>vent = myent.Extract(argv[1]);
-  img->SetFilename(imgname);
+  //Extract Information
+  uint16_t samplesize = 256;
+  feature->SetChunkSize(samplesize<<sample);
+  std::vector<unsigned int> vent = feature->Extract(filename.c_str());
+
+  //Draw Entropy Image
+  auto img = ImageFactory::GetFactory(graphic.c_str());
+  img->SetFilename(filename);
+  img->SetBlockSize(block);
   img->MakeImage(vent);
   return 0;
 }

@@ -1,5 +1,5 @@
 #include <fstream>
-
+#include "common.h"
 #include "entropy.h"
 
 Entropy::Entropy() : 
@@ -15,7 +15,7 @@ Entropy::~Entropy()
 
 std::vector<unsigned int> Entropy::Extract(const std::string & _filename)
 {
-    logger->info("Entropy extraction");
+    logger->debug("Entropy extraction");
 
     size_t filesize = 0;
     char buffer[chunkSize];
@@ -38,7 +38,7 @@ std::vector<unsigned int> Entropy::Extract(const std::string & _filename)
         ent /= chunkSize;
         ent = 1.0 - ent;
         ent *= ent; // Square scale
-        ent *= 255.0;
+        ent *= MAX_HUE;
         entropy.push_back((unsigned int)ent);
     }
     return entropy;
