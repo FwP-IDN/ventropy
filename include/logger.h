@@ -5,10 +5,11 @@
 
 class Logger{
 public:
-    Logger();
     Logger(const char *);
     ~Logger();
 protected:
     std::shared_ptr<spdlog::logger> logger;
+private:
+    Logger();
 };
 #endif

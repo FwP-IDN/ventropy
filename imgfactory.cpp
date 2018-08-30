@@ -11,7 +11,7 @@
 
 using std::tr1::hash;
 
-std::shared_ptr<spdlog::logger> ImageFactory::logger = spdlog::stdout_color_mt("img");
+std::shared_ptr<spdlog::logger> ImageFactory::logger = spdlog::stdout_color_mt("ImgFactory");
 
 namespace detail
 {
@@ -27,6 +27,7 @@ constexpr std::uint32_t fnhash(char const* s, std::size_t count)
 }
 
 ImageFactory::ImageFactory()
+: Logger("ImageFactory")
 {
 }
 

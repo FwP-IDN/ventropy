@@ -2,10 +2,12 @@
 #define IMAGEFATORY
 #include <string>
 #include "imgmaker.h"
+#include "logger.h"
 #include "spdlog/spdlog.h"
 #include "spdlog/sinks/stdout_color_sinks.h"
 
-class ImageFactory: protected Logger{
+class ImageFactory : public Logger 
+{
     public:
         ImageFactory();
         static ImageMaker* GetFactory(std::string img);

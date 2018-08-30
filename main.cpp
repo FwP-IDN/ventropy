@@ -15,17 +15,13 @@
 
 #include "imgfactory.h"
 
-// Namespace
 using namespace std;
 
-// Config stuff
 #define CHART_HEIGHT 480
 #define BAR_HEIGHT 20
 
-// Main function
 int main(int argc, char **argv)
 {
-  // Some variables
   size_t height = CHART_HEIGHT + BAR_HEIGHT;
   size_t width;
   unsigned char *raw, *all;
@@ -50,14 +46,14 @@ int main(int argc, char **argv)
   if (argc == 3)
     myent.SetChunkSize(atoi(argv[2]));
 
-  size_t s, i, sz;
-
   auto img = ImageFactory::GetFactory("png");
 
+  std::string filename(argv[1]);
+  size_t extension = filename.find_last_of(".");
+  size_t last = filename.find_last_of("/");
+  std::string imgname = filename.substr(last+1, extension); 
   std::vector<unsigned int>vent = myent.Extract(argv[1]);
-  
-  std::ifstream file(argv[1], std::ios::binary);
-
-  
+  img->SetFilename(imgname);
+  img->MakeImage(vent);
   return 0;
 }

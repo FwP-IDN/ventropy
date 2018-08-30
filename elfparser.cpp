@@ -2,7 +2,7 @@
 
 #include "elfparser.h"
 
-void ElfParser::Load(const std::string & _filename){
+bool ElfParser::Load(const std::string & _filename){
     filename = _filename;
 }
 
