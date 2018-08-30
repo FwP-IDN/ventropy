@@ -5,7 +5,7 @@
 #include "spdlog/spdlog.h"
 #include "spdlog/sinks/stdout_color_sinks.h"
 
-class ImageFactory{
+class ImageFactory: protected Logger{
     public:
         ImageFactory();
         static ImageMaker* GetFactory(std::string img);

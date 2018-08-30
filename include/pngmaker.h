@@ -5,8 +5,9 @@
 #include "spdlog/spdlog.h"
 #include "spdlog/sinks/stdout_color_sinks.h"
 #include "imgmaker.h"
+#include "logger.h"
 
-class PngMaker : public ImageMaker
+class PngMaker : public ImageMaker, protected Logger
 {
   public:
     PngMaker();
@@ -16,7 +17,6 @@ class PngMaker : public ImageMaker
   private:
     std::fstream f;
     std::string filename;
-    std::shared_ptr<spdlog::logger> logger;
 };
 
 #endif
