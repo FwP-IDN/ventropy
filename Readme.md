@@ -30,7 +30,7 @@ Blue block is homogeneous block
 
 
 Red block is heterogeneous block
-![Imgur](https://i.imgur.com/4OX1RZI.png)
+![Imgur](https://i.imgur.com/TxL0Ziz.png)
 
 
 
