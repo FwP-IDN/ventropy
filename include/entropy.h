@@ -9,7 +9,7 @@ class Entropy : public Feature, protected Logger
   public:
     Entropy();
     ~Entropy();
-    void SetChunkSize(u_int16_t size) { chunkSize = size; }
+    virtual void SetChunkSize(uint16_t size) { chunkSize = size; }
 
     virtual std::vector<unsigned int> Extract(const std::string & _filename);
 

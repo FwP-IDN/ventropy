@@ -48,7 +48,7 @@ inline std::shared_ptr<spdlog::logger> create(std::string logger_name, SinkArgs 
 
 // Return an existing logger or nullptr if a logger with such name doesn't
 // exist.
-// example: spdlog::get("my_logger")->info("hello {}", "world");
+// example: spdlog::get("my_logger")->debug("hello {}", "world");
 inline std::shared_ptr<logger> get(const std::string &name)
 {
     return details::registry::instance().get(name);
