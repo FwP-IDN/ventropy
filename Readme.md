@@ -23,6 +23,17 @@ $ make
 
 ### How to use
 
+Blue color indicates the entropy is low and Red color means entropy value is high in the blok.
+
+Blue block is homogeneous block
+![Imgur](https://i.imgur.com/4OX1RZI.png)
+
+
+Red block is heterogeneous block
+![Imgur](https://i.imgur.com/4OX1RZI.png)
+
+
+
 ```
 $ ./vent --help
 Vent v.0.1, an entropy level measurement tool for ELF
